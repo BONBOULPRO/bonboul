@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BON-BOUL OWNER DASHBOARD</title>
+    <style>
+        :root { --blue: #1e77d2; --dark: #1a1c1e; --green: #2fb44a; --danger: #d32f2f; --orange: #f57c00; --gold: #f1b400; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; background: #f0f2f5; color: #1c1e21; }
+        
+        header { background: var(--dark); color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; height: 60px; border-bottom: 2px solid var(--gold); }
+        .logo-text { font-weight: 800; font-size: 18px; color: var(--gold); letter-spacing: 1px; }
+        
+        .header-btns { display: flex; gap: 10px; align-items: center; }
+        .btn-view { background: var(--blue); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; text-transform: uppercase; transition: 0.2s; }
+        .btn-view:hover { background: #155fa0; }
+        
+        #logoutBtn { background: var(--danger); color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; text-transform: uppercase; }
+
+        .container { padding: 20px; max-width: 1000px; margin: auto; }
+        
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card h3 { margin: 0; font-size: 13px; color: #65676b; text-transform: uppercase; }
+        .card p { margin: 8px 0 0; font-size: 24px; font-weight: bold; color: var(--blue); }
+
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        #searchAgent { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; }
+        
+        .btn-reset { background: var(--orange); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+
+        .table-wrap { background: white; border-radius: 10px; border: 1px solid #ddd; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #eee; color: #444; }
+        td { padding: 14px 12px; border-bottom: 1px solid #eee; }
+        
+        .agent-tag { background: #e7f3ff; color: #1877f2; padding: 4px 8px; border-radius: 5px; font-weight: bold; font-size: 12px; }
+        .amt-tag { color: var(--green); font-weight: bold; }
+        .loading { text-align: center; padding: 60px; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-text">BON-BOUL OWNER</div>
+    <div class="header-btns">
+        <button onclick="window.location.href='index.html?mode=preview'" class="btn-view">View POS 👀</button>
+        <button id="logoutBtn">Logout 🔒</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="stats">
+        <div class="card"><h3>Total Sales (Live)</h3><p id="statTotal">$0.00</p></div>
+        <div class="card"><h3>Tickets Sold</h3><p id="statCount">0</p></div>
+    </div>
+
+    <div class="action-bar">
+        <input type="text" id="searchAgent" placeholder="🔍 Search Agent ID (e.g. 101)..." onkeyup="filterTickets()">
+        <button class="btn-reset" id="resetBtn">RESET DAY</button>
+    </div>
+
+    <div id="loadingMsg" class="loading">Connecting to live sales stream...</div>
+
+    <div class="table-wrap" id="tableContainer" style="display: none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Agent</th>
+                    <th>Number/Type</th>
+                    <th>Draw</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody id="ticketBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCqBOv7kuePhQLoRaiv-O-NC1xKONSCg9c",
+        authDomain: "bonboul-f6485.firebaseapp.com",
+        projectId: "bonboul-f6485",
+        storageBucket: "bonboul-f6485.firebasestorage.app",
+        messagingSenderId: "327539480245",
+        appId: "1:327539480245:web:1ce2eed12fd914b1db10fc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --- THE BOUNCER ---
+    onAuthStateChanged(auth, (user) => {
+        if (!user || user.uid !== "8eJYd6aKOXMj2a2rvdn0J0fPyRY2") {
+            // Redirects to your Black & Gold login
+            window.location.href = "admin-login.html";
+        } else {
+            initLiveFeed();
+        }
+    });
+
+    // Replace your current logout script in admin.html with this:
+    document.getElementById('logoutBtn').onclick = () => {
+        signOut(auth).then(() => {
+            console.log("Logout successful, redirecting...");
+            window.location.href = "admin-login.html";
+        }).catch((error) => {
+            alert("Error logging out: " + error.message);
+        });
+    };
+
+    // RESET DATABASE
+    document.getElementById('resetBtn').onclick = async () => {
+        if (confirm("⚠️ PERMANENT ACTION: Delete all ticket history for today?")) {
+            const querySnapshot = await getDocs(collection(db, "tickets"));
+            const deletePromises = querySnapshot.docs.map(d => deleteDoc(doc(db, "tickets", d.id)));
+            await Promise.all(deletePromises);
+            alert("Database Cleared Successfully!");
+        }
+    };
+
+    // LIVE DATA FEED
+    function initLiveFeed() {
+        const q = query(collection(db, "tickets"), orderBy("timestamp", "desc"));
+        onSnapshot(q, (snap) => {
+            const tbody = document.getElementById('ticketBody');
+            tbody.innerHTML = "";
+            let total = 0;
+            
+            snap.forEach(doc => {
+                const t = doc.data();
+                total += t.amount;
+                tbody.innerHTML += `
+                    <tr>
+                        <td><span class="agent-tag">${t.seller}</span></td>
+                        <td><b>${t.number}</b> <small style="color:#888">(${t.type})</small></td>
+                        <td>${t.draw} / ${t.state}</td>
+                        <td class="amt-tag">$${t.amount.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('statTotal').innerText = "$" + total.toFixed(2);
+            document.getElementById('statCount').innerText = snap.size;
+            document.getElementById('loadingMsg').style.display = "none";
+            document.getElementById('tableContainer').style.display = "block";
+        });
+    }
+
+    // SEARCH FILTER
+    window.filterTickets = () => {
+        let input = document.getElementById('searchAgent').value.toLowerCase();
+        document.querySelectorAll('#ticketBody tr').forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OWNER LOGIN</title>
+    <style>
+        :root { --gold: #f1b400; --dark: #000000; --gray: #1a1a1a; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: var(--dark); margin: 0; }
+        .login-card { background: var(--gray); padding: 40px; border-radius: 15px; width: 100%; max-width: 350px; text-align: center; border: 1px solid var(--gold); box-shadow: 0 0 30px rgba(241, 180, 0, 0.15); }
+        h2 { color: var(--gold); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 30px; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        label { color: var(--gold); font-size: 11px; font-weight: bold; text-transform: uppercase; margin-left: 5px; }
+        input { width: 100%; padding: 14px; margin-top: 5px; border: 1px solid #333; border-radius: 8px; background: #000; color: white; box-sizing: border-box; font-size: 18px; outline: none; text-align: center; letter-spacing: 5px; }
+        button { width: 100%; padding: 15px; background: var(--gold); color: black; border: none; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 16px; margin-top: 20px; text-transform: uppercase; }
+        #errorMsg { color: #ff4444; font-size: 13px; margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <h2>OWNER LOGIN</h2>
+    <div class="input-group">
+        <label>Master PIN</label>
+        <input type="password" id="adminPin" maxlength="4" placeholder="••••" autofocus>
+    </div>
+    <div class="input-group">
+        <label>Security Password</label>
+        <input type="password" id="adminPass" placeholder="••••••••">
+    </div>
+    <button onclick="handleLogin()">Unlock System</button>
+    <div id="errorMsg"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCqBOv7kuePhQLoRaiv-O-NC1xKONSCg9c",
+        authDomain: "bonboul-f6485.firebaseapp.com",
+        projectId: "bonboul-f6485",
+        storageBucket: "bonboul-f6485.firebasestorage.app",
+        messagingSenderId: "327539480245",
+        appId: "1:327539480245:web:1ce2eed12fd914b1db10fc"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    const ADMIN_EMAIL = "bicarnel@gmail.com"; 
+    const CORRECT_PIN = "1228"; 
+
+    onAuthStateChanged(auth, (user) => {
+        if (user && user.uid === "8eJYd6aKOXMj2a2rvdn0J0fPyRY2") {
+            window.location.href = "admin.html";
+        }
+    });
+
+    window.handleLogin = async function() {
+        const pinIn = document.getElementById('adminPin').value.trim();
+        const passIn = document.getElementById('adminPass').value.trim();
+        const err = document.getElementById('errorMsg');
+        
+        if(pinIn !== CORRECT_PIN) {
+            err.innerText = "Invalid Master PIN.";
+            return;
+        }
+
+        try {
+            err.style.color = "var(--gold)";
+            err.innerText = "Checking Credentials...";
+            const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, passIn);
+            if (userCredential.user.uid === "8eJYd6aKOXMj2a2rvdn0J0fPyRY2") {
+                window.location.href = "admin.html";
+            }
+        } catch (e) { 
+            err.style.color = "#ff4444";
+            err.innerText = "Login Failed.";
+        }
+    };
+	// --- SMART NAVIGATION SCRIPT ---
+    const pinField = document.getElementById('adminPin');
+    const passField = document.getElementById('adminPass');
+
+    // When Enter is pressed in PIN, move to Password
+    pinField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            passField.focus();
+        }
+    });
+
+    // When Enter is pressed in Password, Submit
+    passField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleLogin();
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+    <title>BON-BOUL PRO MASTER v2.4</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --blue: #1e77d2; --blue2: #2a86e8; --green: #2fb44a;
+            --line: #cfd3d8; --text: #2b2f33; --danger: #e53935; --gold: #f1b400; --k-bg: #f8f9fa; --k-blue: #007bff;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { margin: 0; background: #111; height: 100svh; display: flex; justify-content: center; align-items: center; color: var(--text); overflow: hidden; }
+        .phone { width: 100%; max-width: 420px; height: 100svh; max-height: 850px; background: #fff; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        
+        #ticketModal { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:200; display:none; justify-content:center; align-items:center; }
+        .modal-content { background:#fff; width:90%; border-radius:10px; padding:20px; max-height:80%; overflow-y:auto; }
+        .modal-btn-row { display:flex; gap:10px; margin-top:15px; }
+        .m-btn { flex:1; padding:12px; border:none; border-radius:5px; font-weight:bold; cursor:pointer; color:#fff; }
+
+        .topbar { background: var(--blue2); color: #fff; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; height: 75px; flex-shrink: 0; }
+        .top-right { display: flex; gap: 6px; align-items: center; }
+        .h-btn { padding: 6px 12px; border-radius: 4px; border: none; font-weight: bold; font-size: 11px; cursor: pointer; }
+        .btn-mic { background: #fff; color: #555; width: 34px; height: 34px; border-radius: 50%; font-size: 16px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .btn-mic.active { background: var(--danger); color: #fff; box-shadow: 0 0 10px var(--danger); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+
+        .content { padding: 8px; background: #eee; flex: 1; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+        .sel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .field { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 5px; }
+        /* Lock styling for system controlled fields */
+        .field-locked { opacity: 0.7; pointer-events: none; background: #f0f0f0 !important; }
+        .field label { font-size: 9px; font-weight: 900; color: var(--blue); text-transform: uppercase; display: block; }
+        .field select, .field input { width: 100%; border: none; outline: none; font-size: 13px; font-weight: bold; background: transparent; }
+
+        .bet-type-bar { display: flex; background: #000000; border-radius: 4px; overflow: hidden; height: 40px; flex-shrink: 0; }
+        .bt-btn { flex: 1; border: none; background: transparent; color: #fff; font-size: 10px; font-weight: bold; cursor: pointer; border-right: 1px solid #333; }
+        .bt-btn.active { background: var(--gold); color: #000; }
+
+        .status-bar { display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px; background: #fff; border: 1px solid var(--line); border-radius: 6px; text-align: center; }
+        .active-bet { border: 2.5px solid var(--blue2) !important; }
+        .active-amt { border: 2.5px solid var(--green) !important; }
+        .s-label { font-size: 10px; color: var(--blue); font-weight: 900; display: block; }
+        .s-val { font-size: 22px; font-weight: 900; }
+        #revIndicator { font-size: 10px; font-weight: 900; color: #ff0000; display: none; text-transform: uppercase; margin-top: 2px; }
+
+        .list-header { display: grid; grid-template-columns: 1fr 1fr 1fr 40px; padding: 8px 10px; background: #f1f1f1; border: 1px solid var(--line); font-size: 11px; font-weight: 900; color: #555; margin-top: 4px; }
+        .ticket-area { flex: 1; background: #fff; border: 1px solid var(--line); border-top: none; overflow-y: auto; }
+        .total-bar { background: var(--green); color: #fff; padding: 10px; border-radius: 4px; font-size: 18px; font-weight: 900; margin-top: 5px; }
+
+        .keypad-container { background: #ced4da; padding: 5px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+        .k { height: 48px; border: none; border-radius: 4px; font-size: 18px; font-weight: bold; cursor: pointer; background: var(--k-bg); transition: 0.1s; }
+        .k.key-active { background: var(--gold) !important; color: #000 !important; transform: scale(0.92); }
+        .k-op { background: var(--k-blue); color: #fff; }
+        .k-del { color: #fff; background: var(--danger); }
+        .k-check { background: var(--green); color: #fff; }
+
+        .bottom-row { display: grid; grid-template-columns: 1fr 1fr 1fr 2fr; gap: 4px; padding: 5px; background: #ced4da; }
+        .b-btn { height: 50px; border: none; border-radius: 4px; font-weight: bold; color: #fff; cursor: pointer; }
+
+        #reportScreen { position: absolute; top: 75px; left: -100%; width: 100%; height: calc(100% - 75px); background: #f4f7f6; z-index: 100; transition: 0.3s; padding: 15px; overflow-y: auto; }
+        #reportScreen.open { left: 0; }
+        .report-card { background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 5px solid var(--blue); box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; cursor: pointer; }
+        .void-btn { position: absolute; right: 10px; top: 10px; background: var(--danger); color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; }
+
+        #loginScreen { position:fixed; top:0; left:0; width:100%; height:100%; background:#1e77d2; z-index:9999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:white; padding:20px; }
+        .login-input { padding:15px; width:100%; max-width:300px; border-radius:8px; border:none; margin-bottom:10px; font-size:18px; color:#333; }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <h1 style="margin-bottom:20px;">AGENT LOGIN</h1>
+    <input type="text" id="agentID" class="login-input" placeholder="Agent ID" autocomplete="off">
+    <input type="password" id="agentPass" class="login-input" placeholder="Password" autocomplete="off">
+    <button id="loginBtn" style="padding:15px 40px; background:var(--gold); border:none; border-radius:8px; font-weight:bold; font-size:18px; color:#000; cursor:pointer;">ENTER SYSTEM</button>
+</div>
+
+<div id="ticketModal">
+    <div class="modal-content">
+        <h3 id="modalTitle" style="margin-top:0;">Ticket Details</h3>
+        <div id="modalBody" style="font-family:monospace; white-space:pre-wrap; background:#f9f9f9; padding:10px; border:1px solid #ddd;"></div>
+        <div class="modal-btn-row">
+            <button id="modalCopy" class="m-btn" style="background:var(--blue);">COPY</button>
+            <button id="modalPrint" class="m-btn" style="background:var(--green);">REPRINT</button>
+            <button onclick="document.getElementById('ticketModal').style.display='none'" class="m-btn" style="background:#555;">CLOSE</button>
+        </div>
+        <p id="lockMsg" style="color:var(--danger); font-size:11px; font-weight:bold; margin-top:10px; display:none;">⚠️ DRAW CLOSED: REPRINT/COPY DISABLED</p>
+    </div>
+</div>
+
+<div class="phone">
+    <div id="reportScreen">
+        <h2 style="margin-top:0;">DAILY SALES REPORT</h2>
+        <div id="salesSummary" style="background:var(--blue); color:#fff; padding:15px; border-radius:8px; margin-bottom:20px;">
+            <span style="font-size:12px; font-weight:bold; opacity:0.8;">TOTAL SALES TODAY</span>
+            <div id="grandTotal" style="font-size:28px; font-weight:900;">$0.00</div>
+        </div>
+        <div id="savedTicketsList"><p style="text-align:center; color:#888;">No sales record.</p></div>
+        <button onclick="toggleMenu()" style="width:100%; padding:12px; background:#333; color:#fff; border:none; border-radius:5px; font-weight:bold; margin-top:10px;">CLOSE REPORT</button>
+    </div>
+
+    <div class="topbar">
+        <div style="display: flex; flex-direction: column;">
+            <span id="currentTime" style="font-size: 12px; font-weight: bold; opacity: 0.85;">--:-- --</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="menuIcon" style="font-size: 24px; cursor: pointer; color: var(--gold);">☰</span>
+                <b style="font-size: 18px;">BON-BOUL PRO</b>
+            </div>
+            <span id="drawTimer" style="font-size: 11px; color: #ffeb3b; font-weight: bold;">LOADING...</span>
+        </div>
+        <div class="top-right">
+            <button class="btn-mic" id="voiceToggle">🎤</button>
+            <button id="topReprintBtn" class="h-btn" style="background:var(--gold); color:#000;">REPRINT</button>
+            <button id="shareBtn" class="h-btn" style="background:#fff; color:var(--blue)">SHARE</button>
+            <button id="logoutBtn" class="h-btn" style="background:#fdeaea; color:var(--danger); border:1px solid var(--danger);">LOGOUT</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="sel-row">
+            <div class="field field-locked"><label>Day</label><select id="daySel" disabled><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
+            <div class="field field-locked"><label>Date</label><input type="text" id="dateInp" disabled value="--/--/----"></div>
+        </div>
+        <div class="sel-row">
+            <div class="field"><label>State</label>
+                <select id="stateSel">
+                    <option value="FL">Florida</option><option value="NY">New York</option><option value="GA">Georgia</option>
+                    <option value="TX">Texas</option><option value="PA">Pennsylvania</option><option value="NC">North Carolina</option>
+                    <option value="NJ">New Jersey</option><option value="IL">Illinois</option><option value="OH">Ohio</option>
+                    <option value="VA">Virginia</option><option value="MI">Michigan</option><option value="MD">Maryland</option>
+                    <option value="CT">Connecticut</option><option value="SC">South Carolina</option><option value="TN">Tennessee</option>
+                </select>
+            </div>
+            <div class="field"><label>Draw</label>
+                <select id="drawSel">
+                    <option>AM</option><option>PM</option><option>EVE</option><option>NIGHT</option>
+                    <option>MIDDAY</option><option>EVENING</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bet-type-bar">
+            <button class="bt-btn active">DIRECT</button>
+            <button class="bt-btn">PALE</button>
+            <button class="bt-btn">PICK 3</button>
+            <button class="bt-btn">PICK 4</button>
+            <button class="bt-btn">PICK 5</button>
+        </div>
+
+        <div id="statusBox" class="status-bar active-bet">
+            <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
+                <span class="s-label">BET</span>
+                <span id="betDisp" class="s-val">00</span>
+                <span id="revIndicator"><b>REVERSE</b></span>
+            </div>
+            <div><span class="s-label">AMOUNT</span><span id="amtDisp" class="s-val">0.00</span></div>
+            <div><span class="s-label">AVAIL</span><span class="s-val" style="color:#999">99</span></div>
+            <div><span class="s-label">TYPE</span><span id="typeLabel" style="font-size:11px;font-weight:bold;">DIRECT</span></div>
+        </div>
+
+        <div class="list-header" style="grid-template-columns: 1fr 1fr 1fr 40px;"><span>LOTTERY</span><span style="text-align: center;">NUMBER</span><span style="text-align: right;">QTY</span><span></span></div>
+        <div class="ticket-area" id="ticketList"></div>
+        <div class="total-bar">TOTAL: $<span id="totalPay">0.00</span></div>
+
+        <div class="keypad-container">
+            <button class="k">7</button><button class="k">8</button><button class="k">9</button><button class="k k-op">*</button><button class="k k-op">/</button>
+            <button class="k">4</button><button class="k">5</button><button class="k">6</button><button class="k k-op">+</button><button class="k k-op">.</button>
+            <button class="k">1</button><button class="k">2</button><button class="k">3</button><button class="k k-op">-</button><button class="k">⚄</button>
+            <button class="k k-del">⌫</button><button class="k">0</button><button class="k k-check">✔✔</button><button class="k k-op">•••</button><button class="k" id="repeatKey">🎫</button>
+        </div>
+        
+        <div class="bottom-row">
+            <button class="b-btn" id="clrBtn" style="background:#f44336;">CLR</button>
+            <button class="b-btn" id="saveBtn" style="background:#2196f3;">SAVE</button>
+            <button class="b-btn" style="background:#607d8b;">PRINT</button>
+            <button class="b-btn" id="enterBtn" style="background:#4caf50; font-size:18px;">ENTER</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyCqBOv7kuePhQLoRaiv-O-NC1xKONSCg9c", authDomain: "bonboul-f6485.firebaseapp.com", projectId: "bonboul-f6485", storageBucket: "bonboul-f6485.firebasestorage.app", messagingSenderId: "327539480245", appId: "1:327539480245:web:1ce2eed12fd914b1db10fc" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore(); const auth = firebase.auth();
+
+    let betVal = ""; let amtVal = ""; let focusField = "bet"; let activeTicket = []; let salesHistory = [];
+    let reverseActive = false; let comboActive = false; let currentType = "DIRECT";
+    let voiceMode = false;
+    let isDrawClosed = false;
+
+    // SYNC SYSTEM DATE AND DAY
+    function syncSystemDateTime() {
+        const now = new Date();
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        
+        // Update Day Select
+        document.getElementById('daySel').value = days[now.getDay()];
+        
+        // Update Date Input (MM/DD/YYYY)
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        document.getElementById('dateInp').value = `${mm}/${dd}/${yyyy}`;
+        
+        // Update Time Display
+        document.getElementById('currentTime').innerText = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); 
+    }
+
+    function updateDrawTimer() {
+        const now = new Date();
+        const state = document.getElementById('stateSel').value;
+        let targets = [];
+
+        if (state === "FL") targets = ["13:15", "21:30"];
+        else if (state === "NY") targets = ["14:15", "22:15"];
+        else if (state === "GA") targets = ["12:14", "18:44", "22:45"];
+        else targets = ["13:00", "21:00"];
+
+        let nextClosing = null;
+        let minDiff = Infinity;
+
+        targets.forEach(t => {
+            const [h, m] = t.split(':').map(Number);
+            const targetDate = new Date();
+            targetDate.setHours(h, m, 0);
+            if (now > targetDate) targetDate.setDate(targetDate.getDate() + 1);
+            const diff = targetDate - now;
+            if (diff < minDiff) { minDiff = diff; nextClosing = targetDate; }
+        });
+
+        const closedWindows = targets.map(t => {
+            const [h, m] = t.split(':').map(Number);
+            const start = new Date(); start.setHours(h, m, 0);
+            const end = new Date(); end.setHours(h, m + 30, 0);
+            return {start, end};
+        });
+
+        isDrawClosed = closedWindows.some(w => now >= w.start && now <= w.end);
+        const timerEl = document.getElementById('drawTimer');
+
+        if (isDrawClosed) {
+            timerEl.innerText = "⛔ DRAW CLOSED";
+            timerEl.style.color = "var(--danger)";
+        } else {
+            const totalSec = Math.floor(minDiff / 1000);
+            const hrs = Math.floor(totalSec / 3600);
+            const mins = Math.floor((totalSec % 3600) / 60);
+            const secs = totalSec % 60;
+            timerEl.innerText = `⏳ CLOSES IN: ${hrs > 0 ? hrs + 'h ' : ''}${mins}m ${secs}s`;
+            timerEl.style.color = "#ffeb3b";
+        }
+    }
+
+    function formatReceiptText(t) {
+        let receipt = `🎫 TICKET #${t.id}\n📅 ${t.date} ${t.time}\n------------------\n`;
+        t.items.forEach(i => { receipt += `${i.tag} | ${i.n} | $${i.p.toFixed(2)}\n`; });
+        receipt += `------------------\n💰 TOTAL: $${t.total.toFixed(2)}`;
+        return receipt;
+    }
+
+    function openTicketView(id) {
+        const t = salesHistory.find(item => item.id === id);
+        if (!t) return;
+        const receipt = formatReceiptText(t);
+        document.getElementById('modalBody').innerText = receipt;
+        const copyBtn = document.getElementById('modalCopy');
+        const printBtn = document.getElementById('modalPrint');
+        const lockMsg = document.getElementById('lockMsg');
+
+        if (isDrawClosed) {
+            copyBtn.style.display = 'none'; printBtn.style.display = 'none'; lockMsg.style.display = 'block';
+        } else {
+            copyBtn.style.display = 'block'; printBtn.style.display = 'block'; lockMsg.style.display = 'none';
+            copyBtn.onclick = () => { navigator.clipboard.writeText(receipt); alert("Ticket Text Copied!"); };
+            printBtn.onclick = () => { alert("Printing REPRINT for Ticket #" + t.id); };
+        }
+        document.getElementById('ticketModal').style.display = 'flex';
+    }
+
+    document.getElementById('topReprintBtn').onclick = () => {
+        if(salesHistory.length > 0) openTicketView(salesHistory[0].id);
+        else alert("No tickets to reprint.");
+    };
+
+    function repeatLastTicket() {
+        if (isDrawClosed) { alert("⛔ DRAW CLOSED: CANNOT COPY NUMBERS"); return; }
+        if (salesHistory.length === 0) { alert("No tickets to copy!"); return; }
+        const lastTicket = salesHistory[0]; 
+        const currentTag = document.getElementById('stateSel').value + document.getElementById('drawSel').value.toUpperCase();
+        activeTicket = lastTicket.items.map(item => ({ n: item.n, p: item.p, tag: currentTag }));
+        renderTicket();
+        alert(`Numbers Copied for NEW Ticket!`);
+    }
+    document.getElementById('repeatKey').onclick = repeatLastTicket;
+
+    document.getElementById('shareBtn').onclick = async () => {
+        if (activeTicket.length === 0) { alert("Ticket is empty!"); return; }
+        const total = document.getElementById('totalPay').innerText;
+        const date = document.getElementById('dateInp').value;
+        let receiptText = `🎫 BON-BOUL RECEIPT\n📅 Date: ${date}\n------------------\n`;
+        activeTicket.forEach(i => { receiptText += `${i.tag} | ${i.n} | $${i.p.toFixed(2)}\n`; });
+        receiptText += `------------------\n💰 TOTAL: $${total}`;
+        if (navigator.share) {
+            try { await navigator.share({ title: 'Lottery Receipt', text: receiptText }); } 
+            catch (err) { console.log("Share failed", err); }
+        } else { alert("Sharing not supported on this browser."); }
+    };
+
+    const voiceBtn = document.getElementById('voiceToggle');
+    function speak(text) { const msg = new SpeechSynthesisUtterance(text); msg.rate = 1.1; window.speechSynthesis.speak(msg); }
+    voiceBtn.onclick = () => {
+        voiceMode = !voiceMode;
+        if (voiceMode) { voiceBtn.classList.add('active'); speak("Voice mode on"); } 
+        else { voiceBtn.classList.remove('active'); speak("Voice mode off"); }
+    };
+
+    document.getElementById('agentID').addEventListener('keydown', function(e) { if (e.key === "Enter") { e.preventDefault(); document.getElementById('agentPass').focus(); } });
+    document.getElementById('agentPass').addEventListener('keydown', function(e) { if (e.key === "Enter") { e.preventDefault(); document.getElementById('loginBtn').click(); } });
+
+    function toggleMenu() { document.getElementById('reportScreen').classList.toggle('open'); }
+    document.getElementById('menuIcon').onclick = toggleMenu;
+
+    function updateUI() {
+        document.getElementById('betDisp').innerText = betVal || "00";
+        document.getElementById('amtDisp').innerText = amtVal || "0.00";
+        document.getElementById('statusBox').className = focusField === "bet" ? "status-bar active-bet" : "status-bar active-amt";
+        const revEl = document.getElementById('revIndicator');
+        revEl.style.display = (reverseActive || comboActive) ? 'block' : 'none';
+        if (currentType === "PALE") revEl.innerHTML = "<b>4FASAD</b>";
+        else if (currentType.includes("PICK")) {
+            if (comboActive) revEl.innerHTML = "<b>COMBO</b>";
+            else if (reverseActive) revEl.innerHTML = "<b>BOX</b>";
+            else revEl.innerHTML = "<b>STRAIGHT</b>";
+        } else revEl.innerHTML = "<b>REVERSE</b>";
+    }
+
+    function handleInput(key) {
+        if (key === "⌫" || key === "Backspace") {
+            if (focusField === "bet") { betVal = betVal.slice(0, -1); reverseActive = false; comboActive = false; }
+            else amtVal = amtVal.slice(0, -1);
+        } else if (key === "/" && currentType.includes("PICK")) {
+            let req = currentType === "PICK 3" ? 3 : currentType === "PICK 4" ? 4 : 5;
+            if (betVal.length < req) { alert(currentType + " NEEDS " + req + " NUMBERS"); return; }
+            comboActive = true; reverseActive = false; focusField = "amt";
+        } else if (key === "." || key === "*") {
+            let req = currentType === "PALE" ? 4 : currentType === "PICK 3" ? 3 : currentType === "PICK 4" ? 4 : currentType === "PICK 5" ? 5 : 1;
+            if (currentType !== "DIRECT" && betVal.length < req) { alert("NEEDS " + req + " NUMBERS"); return; }
+            if (betVal.length > 0) { if (currentType === "DIRECT" && betVal.length === 1) betVal = "0" + betVal; reverseActive = true; comboActive = false; focusField = "amt"; }
+        } else if (key === "Enter" || key === "✔✔" || key === "ENTER") {
+            if (focusField === "bet") {
+                if (betVal === "") return;
+                let req = currentType === "PALE" ? 4 : currentType === "PICK 3" ? 3 : currentType === "PICK 4" ? 4 : currentType === "PICK 5" ? 5 : 0;
+                if (req > 0 && betVal.length < req) { alert("MISSING NUMBERS FOR " + currentType); return; }
+                if (currentType === "DIRECT" && betVal.length === 1) betVal = "0" + betVal;
+                focusField = "amt";
+            } else { if (amtVal !== "") submitBet(); }
+        } else if (!isNaN(key)) {
+            if (focusField === "bet") {
+                let limit = currentType === "DIRECT" ? 2 : currentType === "PICK 3" ? 3 : currentType === "PICK 4" ? 4 : currentType === "PICK 5" ? 5 : 4;
+                if (betVal.length >= limit) return;
+                betVal += key;
+            } else amtVal += key;
+        }
+        updateUI();
+    }
+
+    function submitBet() {
+        if (isDrawClosed) { alert("⛔ DRAW CLOSED: NO NEW BETS ALLOWED"); return; }
+        if (betVal !== "" && amtVal !== "") {
+            const tag = document.getElementById('stateSel').value + document.getElementById('drawSel').value.toUpperCase();
+            const price = parseFloat(amtVal);
+            if (currentType === "PALE") {
+                let n1 = betVal.substring(0,2); let n2 = betVal.substring(2,4);
+                if (reverseActive) {
+                    let r1 = n1.split('').reverse().join(''); let r2 = n2.split('').reverse().join('');
+                    addToList(`${n1}x${n2}`, price, tag); addToList(`${r1}x${n2}`, price, tag); 
+                    addToList(`${n1}x${r2}`, price, tag); addToList(`${r1}x${r2}`, price, tag);
+                } else addToList(`${n1}x${n2}`, price, tag);
+            } 
+            else if (currentType.includes("PICK")) {
+                if (comboActive) {
+                    if (currentType === "PICK 3" || currentType === "PICK 4") {
+                        let d = betVal.split(''); let res = [];
+                        const p = (a, m = []) => {
+                            if (a.length === 0) res.push(m.join(''));
+                            else { for (let i = 0; i < a.length; i++) { let c = a.slice(); let n = c.splice(i, 1); p(c, m.concat(n)); } }
+                        };
+                        p(d);
+                        [...new Set(res)].forEach(num => addToList(num + "S", price, tag));
+                    } else if (currentType === "PICK 5") { addToList(betVal + "C", price * 120, tag); }
+                } else if (reverseActive) { addToList(betVal + "B", price, tag); }
+                else { addToList(betVal + "S", price, tag); }
+            } 
+            else {
+                addToList(betVal, price, tag);
+                if (reverseActive && betVal.length === 2) addToList(betVal.split('').reverse().join(''), price, tag);
+            }
+            betVal = ""; amtVal = ""; focusField = "bet"; reverseActive = false; comboActive = false; updateUI();
+        }
+    }
+
+    function addToList(num, price, tag) { activeTicket.unshift({ n: num, p: price, tag: tag }); renderTicket(); }
+
+    function renderTicket() {
+        document.getElementById('ticketList').innerHTML = activeTicket.map((i, index) => `
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 40px; padding:8px 10px; border-bottom:1px solid #eee; font-family:monospace; font-size:15px; align-items:center;">
+                <span style="color:var(--blue); font-weight:bold;">${i.tag}</span>
+                <span style="text-align:center; font-weight:bold;">${i.n}</span>
+                <span style="text-align:right; font-weight:bold;">$${i.p.toFixed(2)}</span>
+                <span onclick="removeLine(${index})" style="text-align:right; color:var(--danger); font-weight:bold; cursor:pointer; font-size:18px;">✕</span>
+            </div>`).join('');
+        document.getElementById('totalPay').innerText = activeTicket.reduce((a, b) => a + b.p, 0).toFixed(2);
+    }
+
+    function removeLine(index) { activeTicket.splice(index, 1); renderTicket(); }
+
+    document.getElementById('saveBtn').onclick = () => {
+        if (isDrawClosed) { alert("⛔ DRAW CLOSED: CANNOT SAVE NEW TICKET"); return; }
+        if (activeTicket.length === 0) return;
+        const ticketTotal = activeTicket.reduce((a, b) => a + b.p, 0);
+        const ticketID = Math.floor(1000 + Math.random() * 9000);
+        const ticketData = { id: ticketID, date: document.getElementById('dateInp').value, time: new Date().toLocaleTimeString(), items: [...activeTicket], total: ticketTotal };
+        salesHistory.unshift(ticketData);
+        activeTicket = []; renderTicket(); renderReport(); alert("Ticket Saved!");
+    };
+
+    function voidTicket(e, id) { e.stopPropagation(); if (confirm("Void this ticket?")) { salesHistory = salesHistory.filter(t => t.id !== id); renderReport(); } }
+
+    function renderReport() {
+        const grandTotal = salesHistory.reduce((a, b) => a + b.total, 0);
+        document.getElementById('grandTotal').innerText = `$${grandTotal.toFixed(2)}`;
+        const list = document.getElementById('savedTicketsList');
+        if (salesHistory.length === 0) { list.innerHTML = `<p style="text-align:center; color:#888;">No sales record.</p>`; return; }
+        list.innerHTML = salesHistory.map(t => `<div class="report-card" onclick="openTicketView(${t.id})"><button class="void-btn" onclick="voidTicket(event, ${t.id})">VOID</button><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><b>🕒 ${t.time}</b> <b>Total: $${t.total.toFixed(2)}</b></div><div style="font-size:11px; color:#666;">Ticket: #${t.id} | Lines: ${t.items.length}</div></div>`).join('');
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (document.getElementById('loginScreen').style.display !== 'none') return;
+        if (e.key === "Enter") { e.preventDefault(); handleInput("ENTER"); return; }
+        if (!isNaN(e.key) || e.key === "Backspace" || e.key === "." || e.key === "*" || e.key === "/") handleInput(e.key);
+    });
+
+    document.querySelectorAll('.k').forEach(k => {
+        if (k.id !== "repeatKey") k.onclick = () => handleInput(k.innerText.trim());
+    });
+    document.querySelectorAll('.bt-btn').forEach(btn => btn.onclick = function() {
+        document.querySelectorAll('.bt-btn').forEach(b => b.classList.remove('active')); this.classList.add('active');
+        currentType = this.innerText; document.getElementById('typeLabel').innerText = currentType;
+        betVal = ""; amtVal = ""; focusField = "bet"; reverseActive = false; comboActive = false; updateUI();
+    });
+    document.getElementById('enterBtn').onclick = () => handleInput("ENTER");
+    document.getElementById('clrBtn').onclick = () => { betVal = ""; amtVal = ""; focusField = "bet"; reverseActive = false; comboActive = false; activeTicket = []; renderTicket(); updateUI(); };
+    document.getElementById('loginBtn').onclick = function() {
+        const id = document.getElementById('agentID').value.trim(); const pass = document.getElementById('agentPass').value.trim();
+        auth.signInWithEmailAndPassword(id + "@bonboul.com", pass).then(() => { sessionStorage.setItem("isLoggedIn", "true"); location.reload(); }).catch(() => alert("Login Denied"));
+    };
+    if (sessionStorage.getItem("isLoggedIn") === "true") document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('logoutBtn').onclick = () => { sessionStorage.clear(); location.reload(); };
+    
+    // Core Clock and Timer Tick
+    setInterval(() => { 
+        syncSystemDateTime();
+        updateDrawTimer();
+    }, 1000);
+</script>
+</body>
+</html>
